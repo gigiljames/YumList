@@ -157,7 +157,7 @@ function RestaurantPage() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("upload_preset", "restaurants")
-        const response = await fetch(`http://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,
             { method: "post", body: formData }
         )
         const image = await response.json();
