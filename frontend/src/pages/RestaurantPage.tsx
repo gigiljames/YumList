@@ -141,7 +141,7 @@ function RestaurantPage() {
         }
 
         if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-            return "File size must be less than 5 MB.";
+            return `File size must be less than ${MAX_SIZE_MB} MB.`;
         }
 
         return null;
