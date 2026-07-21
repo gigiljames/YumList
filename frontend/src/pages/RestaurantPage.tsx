@@ -28,7 +28,7 @@ function MapRecenter({ position }: { position: LatLngTuple | null }) {
     const map = useMap();
     useEffect(() => {
         if (position) {
-            map.setView(position, 13);
+            map.setView(position, map.getZoom());
         }
     }, [position, map]);
     return null;
