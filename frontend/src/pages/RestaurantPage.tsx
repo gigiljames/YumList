@@ -1,6 +1,7 @@
 import { Button, MenuItem, TextField } from '@mui/material';
 import { useState, useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMapEvent, useMap } from 'react-leaflet'
+import L from 'leaflet';
 import "leaflet/dist/leaflet.css"
 import type { LatLngTuple } from 'leaflet';
 import { useNavigate, useParams } from 'react-router';
@@ -10,6 +11,13 @@ import { MdCloudUpload, MdDelete } from 'react-icons/md';
 import type { restaurant } from '../interfaces/restaurant';
 import { FaArrowLeft } from "react-icons/fa";
 import { handleApiError } from '../utils/handleApiError';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 type PreviewFile = {
     file?: File;
@@ -32,6 +40,8 @@ function RestaurantPage() {
     const { id } = useParams();
     const isEditMode = id ? true : false;
     const defaultCenter: LatLngTuple = [9.9312, 76.2673];
+    const [loading, setLoading] = useState<boolean>(isEditMode);
+    const [notFound, setNotFound] = useState<boolean>(false);
     const [selectedPosition, setSelectedPosition] = useState<LatLngTuple | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [imagePreview, setImagePreview] = useState<PreviewFile | null>(
@@ -75,7 +85,8 @@ function RestaurantPage() {
     useEffect(() => {
         if (isEditMode && id) {
             const fetchRestaurant = async () => {
-                const toastId = toast.loading("Loading restaurant details...");
+                setLoading(true);
+                setNotFound(false);
                 try {
                     const response = await viewRestaurant(id);
                     if (response.success && response.data) {
@@ -94,12 +105,15 @@ function RestaurantPage() {
                         if (rest.displayImage) {
                             setImagePreview({ previewUrl: rest.displayImage });
                         }
-                        toast.dismiss(toastId);
                     } else {
-                        toast.error(response.message || "Failed to load restaurant details", { id: toastId });
+                        setNotFound(true);
+                        toast.error(response.message || "Failed to load restaurant details");
                     }
                 } catch (error) {
-                    handleApiError(error, "Error loading restaurant details", toastId);
+                    setNotFound(true);
+                    handleApiError(error, "Error loading restaurant details");
+                } finally {
+                    setLoading(false);
                 }
             };
             fetchRestaurant();
@@ -319,142 +333,159 @@ function RestaurantPage() {
         <div className='flex justify-center'>
             <div className="flex flex-col w-full lg:w-350 pt-3 lg:pt-10 gap-3">
                 <div className='flex items-center gap-4 px-5 lg:px-7'>
-                    <div className='hover:bg-gray-200 translate-y-0.5 active:bg-gray-300 p-2 rounded-full transition-all duration-200 items-center' onClick={() => navigate(-1)}>
+                    <div className='hover:bg-gray-200 translate-y-0.5 active:bg-gray-300 p-2 rounded-full transition-all duration-200 items-center cursor-pointer' onClick={() => navigate(-1)}>
                         <FaArrowLeft />
                     </div>
                     <h1 className='font-bold text-3xl  '>
                         {isEditMode ? "Edit Restaurant" : "Add Restaurant"}
                     </h1>
                 </div>
-                <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex flex-col gap-4 lg:w-3/5 px-5 lg:px-7 lg:py-5">
-                        <h2 className='font-semibold text-xl'>Basic Information</h2>
-                        <form className='bg-white  rounded-sm w-full max-h-screen overflow-y-auto py-1.5'>
-                            <div className='flex flex-col gap-6'>
-                                <TextField label="Name" variant='outlined' value={formData.name.value} onChange={(e) => {
-                                    setFormData((prev) => ({ ...prev, name: { value: e.target.value, error: false, helperText: "" } }))
-                                }} error={formData.name.error} helperText={formData.name.helperText} />
-                                <div className='flex flex-col lg:flex-row gap-3 w-full'>
-                                    <TextField label="Mode" variant='outlined' value={formData.mode.value} select fullWidth onChange={(e) => {
-                                        setFormData((prev) => ({ ...prev, mode: { value: e.target.value, error: false, helperText: "" } }))
-                                    }} error={formData.mode.error} helperText={formData.mode.helperText}>
-                                        {modeOptions.map((option) => (
-                                            <MenuItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                    <TextField label="Phone" variant='outlined' value={formData.phone.value} fullWidth onChange={(e) => {
-                                        setFormData((prev) => ({ ...prev, phone: { value: e.target.value, error: false, helperText: "" } }))
-                                    }} error={formData.phone.error} helperText={formData.phone.helperText} />
-                                </div>
-                                <div className='flex flex-col lg:flex-row gap-3'>
-                                    <TextField label="Email" variant='outlined' value={formData.email.value} fullWidth onChange={(e) => {
-                                        setFormData((prev) => ({ ...prev, email: { value: e.target.value, error: false, helperText: "" } }))
-                                    }} error={formData.email.error} helperText={formData.email.helperText} />
-                                    <TextField label="Website" variant='outlined' value={formData.website.value} fullWidth onChange={(e) => {
-                                        setFormData((prev) => ({ ...prev, website: { value: e.target.value, error: false, helperText: "" } }))
-                                    }} error={formData.website.error} helperText={formData.website.helperText} />
-                                </div>
-                                <TextField label="Address" variant='outlined' value={formData.address.value} multiline maxRows={4} minRows={4} onChange={(e) => {
-                                    setFormData((prev) => ({ ...prev, address: { value: e.target.value, error: false, helperText: "" } }))
-                                }} error={formData.address.error} helperText={formData.address.helperText} />
-                            </div>
-                        </form>
-                    </div>
-                    <div className="flex flex-col gap-4 px-5 lg:px-7 lg:py-5 lg:w-2/5">
-                        <h2 className='font-semibold text-xl'>Display image</h2>
-                        <div className={`border-2 border-dashed rounded-sm p-4 flex flex-col items-center justify-center min-h-[220px] transition-all duration-300 ${imageError ? 'border-red-500 bg-red-50/10' : 'border-black/30 bg-gray-50/50'} h-full`}>
-                            {imagePreview ? (
-                                <div className="flex flex-col items-center gap-3 w-full">
-                                    <div className="relative group w-full max-h-[270px] overflow-hidden rounded-md flex justify-center bg-gray-100 border border-gray-200">
-                                        <img
-                                            src={imagePreview.previewUrl}
-                                            alt="Image preview"
-                                            className="max-h-[250px] max-w-full rounded-md object-contain p-1"
-                                        />
-                                    </div>
-                                    <div className='flex justify-between w-full items-center'>
 
-                                        <div className="text-left w-full px-2">
-                                            <p className="text-sm font-semibold text-gray-700 truncate max-w-[250px]" title={imagePreview.file?.name || (imagePreview.previewUrl ? imagePreview.previewUrl.substring(imagePreview.previewUrl.lastIndexOf('/') + 1) : "image")}>
-                                                {imagePreview.file?.name || (imagePreview.previewUrl ? imagePreview.previewUrl.substring(imagePreview.previewUrl.lastIndexOf('/') + 1) : "image")}
-                                            </p>
-                                            {imagePreview.file && (
-                                                <p className="text-xs text-gray-500">
-                                                    {imagePreview.file.size > 1024 * 1024
-                                                        ? `${(imagePreview.file.size / (1024 * 1024)).toFixed(2)} MB`
-                                                        : `${(imagePreview.file.size / 1024).toFixed(2)} KB`}
-                                                </p>
-                                            )}
+                {loading ? (
+                    <div className="flex justify-center items-center py-20 text-gray-500 font-medium">
+                        <span className="animate-pulse text-lg">Loading restaurant details...</span>
+                    </div>
+                ) : notFound ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4 px-5 text-center">
+                        <h2 className="text-2xl font-bold text-gray-800">Restaurant Not Found</h2>
+                        <p className="text-gray-500">The restaurant you are trying to edit could not be found.</p>
+                        <Button variant="contained" onClick={() => navigate("/")} className="bg-blue-600 hover:bg-blue-700">
+                            Back to Manage Page
+                        </Button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex flex-col lg:flex-row gap-4">
+                            <div className="flex flex-col gap-4 lg:w-3/5 px-5 lg:px-7 lg:py-5">
+                                <h2 className='font-semibold text-xl'>Basic Information</h2>
+                                <form className='bg-white  rounded-sm w-full max-h-screen overflow-y-auto py-1.5'>
+                                    <div className='flex flex-col gap-6'>
+                                        <TextField label="Name" variant='outlined' value={formData.name.value} onChange={(e) => {
+                                            setFormData((prev) => ({ ...prev, name: { value: e.target.value, error: false, helperText: "" } }))
+                                        }} error={formData.name.error} helperText={formData.name.helperText} />
+                                        <div className='flex flex-col lg:flex-row gap-3 w-full'>
+                                            <TextField label="Mode" variant='outlined' value={formData.mode.value} select fullWidth onChange={(e) => {
+                                                setFormData((prev) => ({ ...prev, mode: { value: e.target.value, error: false, helperText: "" } }))
+                                            }} error={formData.mode.error} helperText={formData.mode.helperText}>
+                                                {modeOptions.map((option) => (
+                                                    <MenuItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </MenuItem>
+                                                ))}
+                                            </TextField>
+                                            <TextField label="Phone" variant='outlined' value={formData.phone.value} fullWidth onChange={(e) => {
+                                                setFormData((prev) => ({ ...prev, phone: { value: e.target.value, error: false, helperText: "" } }))
+                                            }} error={formData.phone.error} helperText={formData.phone.helperText} />
                                         </div>
-                                        <Button
-                                            variant="outlined"
-                                            color="error"
-                                            size="small"
-                                            startIcon={<MdDelete />}
-                                            onClick={handleRemoveImage}
-                                        >
-                                            Remove
-                                        </Button>
+                                        <div className='flex flex-col lg:flex-row gap-3'>
+                                            <TextField label="Email" variant='outlined' value={formData.email.value} fullWidth onChange={(e) => {
+                                                setFormData((prev) => ({ ...prev, email: { value: e.target.value, error: false, helperText: "" } }))
+                                            }} error={formData.email.error} helperText={formData.email.helperText} />
+                                            <TextField label="Website" variant='outlined' value={formData.website.value} fullWidth onChange={(e) => {
+                                                setFormData((prev) => ({ ...prev, website: { value: e.target.value, error: false, helperText: "" } }))
+                                            }} error={formData.website.error} helperText={formData.website.helperText} />
+                                        </div>
+                                        <TextField label="Address" variant='outlined' value={formData.address.value} multiline maxRows={4} minRows={4} onChange={(e) => {
+                                            setFormData((prev) => ({ ...prev, address: { value: e.target.value, error: false, helperText: "" } }))
+                                        }} error={formData.address.error} helperText={formData.address.helperText} />
                                     </div>
+                                </form>
+                            </div>
+                            <div className="flex flex-col gap-4 px-5 lg:px-7 lg:py-5 lg:w-2/5">
+                                <h2 className='font-semibold text-xl'>Display image</h2>
+                                <div className={`border-2 border-dashed rounded-sm p-4 flex flex-col items-center justify-center min-h-[220px] transition-all duration-300 ${imageError ? 'border-red-500 bg-red-50/10' : 'border-black/30 bg-gray-50/50'} h-full`}>
+                                    {imagePreview ? (
+                                        <div className="flex flex-col items-center gap-3 w-full">
+                                            <div className="relative group w-full max-h-[270px] overflow-hidden rounded-md flex justify-center bg-gray-100 border border-gray-200">
+                                                <img
+                                                    src={imagePreview.previewUrl}
+                                                    alt="Image preview"
+                                                    className="max-h-[250px] max-w-full rounded-md object-contain p-1"
+                                                />
+                                            </div>
+                                            <div className='flex justify-between w-full items-center'>
+
+                                                <div className="text-left w-full px-2">
+                                                    <p className="text-sm font-semibold text-gray-700 truncate max-w-[250px]" title={imagePreview.file?.name || (imagePreview.previewUrl ? imagePreview.previewUrl.substring(imagePreview.previewUrl.lastIndexOf('/') + 1) : "image")}>
+                                                        {imagePreview.file?.name || (imagePreview.previewUrl ? imagePreview.previewUrl.substring(imagePreview.previewUrl.lastIndexOf('/') + 1) : "image")}
+                                                    </p>
+                                                    {imagePreview.file && (
+                                                        <p className="text-xs text-gray-500">
+                                                            {imagePreview.file.size > 1024 * 1024
+                                                                ? `${(imagePreview.file.size / (1024 * 1024)).toFixed(2)} MB`
+                                                                : `${(imagePreview.file.size / 1024).toFixed(2)} KB`}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <Button
+                                                    variant="outlined"
+                                                    color="error"
+                                                    size="small"
+                                                    startIcon={<MdDelete />}
+                                                    onClick={handleRemoveImage}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <label className="flex flex-col items-center justify-center gap-3 cursor-pointer w-full h-full py-6">
+                                            <MdCloudUpload className="text-5xl text-gray-400 hover:text-blue-500 transition-colors" />
+                                            <div className="text-center">
+                                                <span className="text-sm font-medium text-blue-600 hover:underline">Choose a file</span>
+                                                <p className="text-xs text-gray-500 mt-1">PNG, JPG, JPEG up to 2MB</p>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/jpg"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleFile(file);
+                                                }}
+                                            />
+                                        </label>
+                                    )}
+                                    {imageError && (
+                                        <div className="text-red-500 text-xs font-semibold mt-3 text-center">
+                                            {imageError}
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center gap-3 cursor-pointer w-full h-full py-6">
-                                    <MdCloudUpload className="text-5xl text-gray-400 hover:text-blue-500 transition-colors" />
-                                    <div className="text-center">
-                                        <span className="text-sm font-medium text-blue-600 hover:underline">Choose a file</span>
-                                        <p className="text-xs text-gray-500 mt-1">PNG, JPG, JPEG up to 2MB</p>
-                                    </div>
-                                    <input
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/jpg"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) handleFile(file);
-                                        }}
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-4 px-5 lg:px-7 lg:py-5">
+                            <h2 className='font-semibold text-xl'>Location</h2>
+                            <div className={`h-[350px] lg:h-[550px] overflow-hidden rounded-sm border ${locationError ? 'border-red-500' : 'border-transparent'}`}>
+                                <MapContainer center={defaultCenter} zoom={10} scrollWheelZoom={true}>
+                                    <TileLayer
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                     />
-                                </label>
-                            )}
-                            {imageError && (
-                                <div className="text-red-500 text-xs font-semibold mt-3 text-center">
-                                    {imageError}
+                                    {selectedPosition && (
+                                        <Marker position={selectedPosition}>
+                                            <Popup>
+                                                Selected Location
+                                            </Popup>
+                                        </Marker>
+                                    )}
+                                    <SetLocation />
+                                    <MapRecenter position={selectedPosition} />
+                                </MapContainer>
+                            </div>
+                            {locationError && (
+                                <div className="text-red-500 text-xs lg:text-sm">
+                                    {locationError}
                                 </div>
                             )}
                         </div>
-                    </div>
-                </div>
-                <div className="flex flex-col gap-4 px-5 lg:px-7 lg:py-5">
-                    <h2 className='font-semibold text-xl'>Location</h2>
-                    <div className={`h-[350px] lg:h-[550px] overflow-hidden rounded-sm border ${locationError ? 'border-red-500' : 'border-transparent'}`}>
-                        <MapContainer center={defaultCenter} zoom={10} scrollWheelZoom={true}>
-                            <TileLayer
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
-                            {selectedPosition && (
-                                <Marker position={selectedPosition}>
-                                    <Popup>
-                                        Selected Location
-                                    </Popup>
-                                </Marker>
-                            )}
-                            <SetLocation />
-                            <MapRecenter position={selectedPosition} />
-                        </MapContainer>
-                    </div>
-                    {locationError && (
-                        <div className="text-red-500 text-xs lg:text-sm">
-                            {locationError}
+                        <div className='flex px-5 lg:px-7 lg:py-5 w-full justify-center lg:justify-end pt-4'>
+                            <Button variant='contained' className='h-12 w-full lg:w-100' onClick={handleSubmit}>
+                                {isEditMode ? "Update" : "Submit"}
+                            </Button>
                         </div>
-                    )}
-                </div>
-                <div className='flex px-5 lg:px-7 lg:py-5 w-full justify-center lg:justify-end pt-4'>
-                    <Button variant='contained' className='h-12 w-full lg:w-100' onClick={handleSubmit}>
-                        {isEditMode ? "Update" : "Submit"}
-                    </Button>
-                </div>
+                    </>
+                )}
             </div>
         </div>
     )

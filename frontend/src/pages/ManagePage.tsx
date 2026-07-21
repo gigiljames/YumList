@@ -21,9 +21,10 @@ import {
   Box,
   Typography,
   Card,
-  CardMedia
+  CardMedia,
+  InputAdornment
 } from '@mui/material';
-import { MdKeyboardArrowDown, MdKeyboardArrowUp, MdDelete, MdEdit, MdMap } from 'react-icons/md';
+import { MdKeyboardArrowDown, MdKeyboardArrowUp, MdDelete, MdEdit, MdMap, MdClear } from 'react-icons/md';
 import { toast } from 'react-hot-toast';
 import { listRestaurants, deleteRestaurant } from '../api/restaurantService';
 import type { restaurant } from '../interfaces/restaurant';
@@ -154,7 +155,7 @@ function ManagePage() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchName);
-      setPage(0); // Reset page on new search
+      setPage(0);
     }, 400);
     return () => clearTimeout(handler);
   }, [searchName]);
@@ -248,6 +249,22 @@ function ManagePage() {
           onChange={(e) => setSearchName(e.target.value)}
           fullWidth
           placeholder="Type restaurant name..."
+          slotProps={{
+            input: {
+              endAdornment: searchName ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="clear search"
+                    onClick={() => setSearchName("")}
+                    edge="end"
+                    size="small"
+                  >
+                    <MdClear />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            },
+          }}
         />
         <TextField
           label="Filter by Mode"
